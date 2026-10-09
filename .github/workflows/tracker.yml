@@ -1,0 +1,29 @@
+name: Check Battlefield Promos
+
+on:
+  schedule:
+    # Runs every 4 hours automatically
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allows you to trigger it manually anytime from GitHub UI
+
+jobs:
+  track-events:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Event Scraper & AI Parser
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+        run: node scripts/check-events.js
