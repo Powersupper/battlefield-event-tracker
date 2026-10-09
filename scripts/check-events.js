@@ -4,7 +4,7 @@ import RSSParser from 'rss-parser';
 const RSS_FEED_URL = 'https://rss.app/feeds/v1.1/YOUR_BATTLEFIELD_RSS_ID.json'; // Replace with your feed bridge URL
 const WORKER_URL = process.env.WORKER_URL;
 const WORKER_SECRET = process.env.WORKER_SECRET;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Or OPENAI_API_KEY
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 
 async function analyzeWithAI(title, content) {
   const prompt = `
@@ -27,17 +27,25 @@ Output your response strictly as a valid JSON object with no markdown code block
 }
 `;
 
-  // Example using Gemini API endpoint (or swap for OpenAI endpoint)
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+  // DeepSeek Chat Completions API request
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }]
+      model: 'deepseek-chat', // or 'deepseek-reasoner'
+      messages: [
+        { role: 'system', content: 'You are a precise data extraction assistant that outputs only valid JSON.' },
+        { role: 'user', content: prompt }
+      ],
+      stream: false
     })
   });
 
   const data = await response.json();
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  const rawText = data.choices?.[0]?.message?.content || '{}';
   
   // Clean up any stray markdown formatting if the model adds it
   const cleanedJSON = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -49,7 +57,6 @@ async function run() {
   console.log('Fetching Battlefield feed...');
   const feed = await parser.parseURL(RSS_FEED_URL);
 
-  // Check the most recent post
   const latestItem = feed.items[0];
   if (!latestItem) {
     console.log('No feed items found.');
